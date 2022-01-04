@@ -1,0 +1,112 @@
+<html>
+  <body>
+    <style>
+      html,
+      body,
+      div,
+      span,
+      pre,
+      p {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        font-size: 100%;
+        font: inherit;
+        vertical-align: baseline;
+      }
+
+      body {
+        font-family: monospace;
+        line-height: 1;
+      }
+
+      #buffer,
+      #caret-offset {
+        padding: 10px;
+        padding-left: 40px;
+      }
+
+      #buffer {
+        position: relative;
+        overflow: scroll;
+        outline: none;
+        display: block;
+      }
+
+      #highlighted-buffer {
+        counter-reset: line;
+      }
+
+      .line:before {
+        content: attr(num);
+        position: absolute;
+        left: 0;
+        width: 30px;
+        color: #6f6f6f;
+        text-align: end;
+        display: inline-block;
+      }
+
+      #caret-offset {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        visibility: hidden;
+      }
+
+      #caret-offset::after {
+        content: "";
+        display: inline-block;
+        visibility: visible;
+        animation: blink 1s ease-in-out 0s infinite;
+
+        height: 12px;
+        width: 2px;
+        background: black;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+    <div id="buffer" tabindex="0"></div>
+    <script>
+      (async () => {
+        await invoke({ cmd: "init" });
+
+        const buffer = document.querySelector("#buffer");
+        buffer.focus();
+        buffer.addEventListener("keydown", async (e) => {
+          e.preventDefault();
+          await invoke({ cmd: "bufferKeyDown", key: e.key, ctrl: e.ctrlKey });
+        });
+        buffer.addEventListener("click", async (e) => {
+          e.preventDefault();
+          const selection = window.getSelection();
+
+          let offset = selection.anchorOffset;
+          let el = selection.anchorNode.parentNode.previousSibling;
+          do {
+            offset += el.textContent.length;
+          } while ((el = el.previousSibling));
+
+          await invoke({ cmd: "bufferClick", offset });
+        });
+      })();
+
+      // https://github.com/Boscop/web-view/issues/289
+      function invoke(cmd) {
+        const json = JSON.stringify(cmd);
+        if (window.external !== undefined) {
+          return window.external.invoke(json);
+        } else if (window.webkit.messageHandlers.external !== undefined) {
+          return window.webkit.messageHandlers.external.postMessage(json);
+        }
+        throw new Error("Failed to locate webkit external handler");
+      }
+    </script>
+  </body>
+</html>
